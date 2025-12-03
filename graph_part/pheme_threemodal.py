@@ -21,6 +21,7 @@ import json, os, time
 import threading
 import argparse
 import config_file
+from llm_dataset_enhancer import LLMDataAugmenter
 import random
 from time import *
 import sys
@@ -505,8 +506,10 @@ def load_dataset():
         reader = csv.reader(f)
         result = list(reader)[1:]
         mid2num = {}
+        mid2text = {}
         for line in result:
             mid2num[line[1]] = line[0]
+            mid2text[line[1]] = line[2]
     newid2num = {}
     for id in X_train_tid:
         newid2num[id] = mid2num[newid2mid[id]]
@@ -515,6 +518,15 @@ def load_dataset():
     for id in X_test_tid:
         newid2num[id] = mid2num[newid2mid[id]]
     config['newid2imgnum'] = newid2num
+
+    annotation_path = os.path.join(pre, 'llm_annotations.json')
+    augmenter = LLMDataAugmenter(annotation_path)
+    if augmenter.has_annotations():
+        config['llm_augmented_text'] = augmenter.build_augmented_text(newid2mid, mid2text)
+        config['llm_soft_labels'] = augmenter.build_soft_labels(newid2mid)
+    else:
+        config['llm_augmented_text'] = {}
+        config['llm_soft_labels'] = {}
 
     return X_train_tid, X_train, y_train, \
            X_dev_tid, X_dev, y_dev, \
